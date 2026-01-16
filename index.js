@@ -58,14 +58,16 @@ function startServer() {
   app.use(bodyParser.json());
   app.use(express.json());
 
-  // ✅ Simple CORS that works with Amplify + Render instantly
-  app.use(
-    cors({
-      origin: "*",
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
-    })
-  );
+  // ✅ CORS FIX (works for Amplify + Render)
+  app.use(cors());
+
+  // ✅ Preflight (OPTIONS) fix - without using * or /* routes
+  app.use((req, res, next) => {
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(200);
+    }
+    next();
+  });
 
   // ✅ Routes
   app.use("/", mainRouter);
