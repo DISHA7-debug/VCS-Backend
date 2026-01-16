@@ -10,6 +10,9 @@ const { hideBin } = require("yargs/helpers");
 
 const mainRouter = require("./routes/main.router");
 
+// ✅ IMPORTANT: put this on TOP before yargs runs
+let serverStarted = false;
+
 // CLI controllers
 const { initRepo } = require("./controllers/init");
 const { addRepo } = require("./controllers/add");
@@ -20,37 +23,7 @@ const { revertRepo } = require("./controllers/revert");
 
 dotenv.config();
 
-/* -------------------- YARGS COMMANDS -------------------- */
-
-yargs(hideBin(process.argv))
-  .command("start", "Starts the server", {}, startServer)
-  .command("init", "Initialise a new repository", {}, initRepo)
-  .command("add <file>", "Add a file to the repository", (yargs) => {
-    yargs.positional("file", {
-      describe: "File to add",
-      type: "string",
-    });
-  }, (argv) => addRepo(argv.file))
-  .command("commit <message>", "Commit staged files", (yargs) => {
-    yargs.positional("message", {
-      describe: "Commit message",
-      type: "string",
-    });
-  }, (argv) => commitRepo(argv.message))
-  .command("push", "Push commits to S3", {}, pushRepo)
-  .command("pull", "Pull commits from S3", {}, pullRepo)
-  .command("revert <commitID>", "Revert to a commit", (yargs) => {
-    yargs.positional("commitID", {
-      describe: "Commit ID",
-      type: "string",
-    });
-  }, (argv) => revertRepo(argv.commitID))
-  .demandCommand(1)
-  .help().argv;
-
 /* -------------------- SERVER -------------------- */
-
-let serverStarted = false; // ✅ prevent double start
 
 function startServer() {
   if (serverStarted) {
@@ -66,10 +39,10 @@ function startServer() {
   app.use(bodyParser.json());
   app.use(express.json());
 
-  // ✅ CORS (Amplify + Render safe)
+  // ✅ CORS FIX (works with Amplify)
   app.use(cors({ origin: "*" }));
 
-  // ✅ Health check (Render hits this)
+  // ✅ Health check for Render
   app.get("/", (req, res) => {
     res.status(200).send("Backend is running ✅");
   });
@@ -77,7 +50,7 @@ function startServer() {
   // ✅ Routes
   app.use("/", mainRouter);
 
-  // ✅ Create HTTP server
+  // ✅ Create server
   const httpServer = http.createServer(app);
 
   // ✅ Socket.io
@@ -101,21 +74,63 @@ function startServer() {
     });
   });
 
-  // ✅ MongoDB (DON'T EXIT ON FAIL)
+  // ✅ MongoDB (don't crash server)
   mongoose
     .connect(process.env.MONGODB_URI)
     .then(() => console.log("MongoDB connected!"))
     .catch((err) => {
       console.error("MongoDB connection failed:", err.message);
-      // ✅ don't crash server on Render
     });
 
   mongoose.connection.once("open", () => {
     console.log("CRUD operations called");
   });
 
-  // ✅ Start listening
+  // ✅ Listen
   httpServer.listen(PORT, () => {
     console.log(`Server is running on PORT ${PORT}`);
   });
 }
+
+/* -------------------- YARGS COMMANDS -------------------- */
+
+yargs(hideBin(process.argv))
+  .command("start", "Starts the server", {}, startServer)
+  .command("init", "Initialise a new repository", {}, initRepo)
+  .command(
+    "add <file>",
+    "Add a file to the repository",
+    (yargs) => {
+      yargs.positional("file", {
+        describe: "File to add",
+        type: "string",
+      });
+    },
+    (argv) => addRepo(argv.file)
+  )
+  .command(
+    "commit <message>",
+    "Commit staged files",
+    (yargs) => {
+      yargs.positional("message", {
+        describe: "Commit message",
+        type: "string",
+      });
+    },
+    (argv) => commitRepo(argv.message)
+  )
+  .command("push", "Push commits to S3", {}, pushRepo)
+  .command("pull", "Pull commits from S3", {}, pullRepo)
+  .command(
+    "revert <commitID>",
+    "Revert to a commit",
+    (yargs) => {
+      yargs.positional("commitID", {
+        describe: "Commit ID",
+        type: "string",
+      });
+    },
+    (argv) => revertRepo(argv.commitID)
+  )
+  .demandCommand(1)
+  .help().argv;
