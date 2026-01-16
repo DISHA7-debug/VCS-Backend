@@ -54,33 +54,18 @@ function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3002;
 
-  // ✅ Allowed Frontend Origins
-const allowedOrigins = [
-  "https://main.d1ca4l9j49evry.amplifyapp.com",
-  "http://localhost:5173",
-  "http://localhost:3000",
-];
+  // ✅ Middleware
+  app.use(bodyParser.json());
+  app.use(express.json());
 
-// ✅ CORS Middleware (NO app.options needed)
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      if (!origin) return callback(null, true); // Postman/curl
-
-      if (allowedOrigins.includes(origin)) {
-        return callback(null, true);
-      }
-      return callback(new Error("Not allowed by CORS"));
-    },
-    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
-    credentials: true,
-  })
-);
-
-
-  // ✅ Preflight requests (Express v5 safe)
-  app.options("/", cors());
+  // ✅ Simple CORS that works with Amplify + Render instantly
+  app.use(
+    cors({
+      origin: "*",
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+    })
+  );
 
   // ✅ Routes
   app.use("/", mainRouter);
@@ -103,9 +88,8 @@ app.use(
 
   const io = new Server(httpServer, {
     cors: {
-      origin: allowedOrigins,
-      methods: ["GET", "POST", "OPTIONS"],
-      credentials: true,
+      origin: "*",
+      methods: ["GET", "POST"],
     },
   });
 
