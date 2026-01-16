@@ -80,7 +80,7 @@ app.use(
 
 
   // ✅ Preflight requests (Express v5 safe)
-  app.options("/*", cors());
+  app.options("/", cors());
 
   // ✅ Routes
   app.use("/", mainRouter);
