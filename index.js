@@ -54,35 +54,30 @@ function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3002;
 
-  // ✅ Allowed Frontend Origins (Amplify + Local)
-  const allowedOrigins = [
-    "https://main.d1ca4l9j49evry.amplifyapp.com",
-    "http://localhost:5173",
-    "http://localhost:3000",
-  ];
+  // ✅ Allowed Frontend Origins
+const allowedOrigins = [
+  "https://main.d1ca4l9j49evry.amplifyapp.com",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
 
-  // ✅ Middleware
-  app.use(bodyParser.json());
-  app.use(express.json());
+// ✅ CORS Middleware (NO app.options needed)
+app.use(
+  cors({
+    origin: function (origin, callback) {
+      if (!origin) return callback(null, true); // Postman/curl
 
-  // ✅ FIXED CORS
-  app.use(
-    cors({
-      origin: function (origin, callback) {
-        // allow requests with no origin (Postman / curl)
-        if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(new Error("Not allowed by CORS"));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+    credentials: true,
+  })
+);
 
-        if (allowedOrigins.includes(origin)) {
-          return callback(null, true);
-        } else {
-          return callback(new Error("Not allowed by CORS"));
-        }
-      },
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-      allowedHeaders: ["Content-Type", "Authorization"],
-      credentials: true,
-    })
-  );
 
   // ✅ Preflight requests (Express v5 safe)
   app.options("/*", cors());
