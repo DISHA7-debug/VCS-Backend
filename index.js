@@ -1,55 +1,3 @@
-const express = require("express");
-const dotenv = require("dotenv");
-const cors = require("cors");
-const mongoose = require("mongoose");
-const bodyParser = require("body-parser");
-const http = require("http");
-const { Server } = require("socket.io");
-const yargs = require("yargs");
-const { hideBin } = require("yargs/helpers");
-
-const mainRouter = require("./routes/main.router");
-
-// CLI controllers
-const { initRepo } = require("./controllers/init");
-const { addRepo } = require("./controllers/add");
-const { commitRepo } = require("./controllers/commit");
-const { pushRepo } = require("./controllers/push");
-const { pullRepo } = require("./controllers/pull");
-const { revertRepo } = require("./controllers/revert");
-
-dotenv.config();
-
-/* -------------------- YARGS COMMANDS -------------------- */
-
-yargs(hideBin(process.argv))
-  .command("start", "Starts the server", {}, startServer)
-  .command("init", "Initialise a new repository", {}, initRepo)
-  .command("add <file>", "Add a file to the repository", (yargs) => {
-    yargs.positional("file", {
-      describe: "File to add",
-      type: "string",
-    });
-  }, (argv) => addRepo(argv.file))
-  .command("commit <message>", "Commit staged files", (yargs) => {
-    yargs.positional("message", {
-      describe: "Commit message",
-      type: "string",
-    });
-  }, (argv) => commitRepo(argv.message))
-  .command("push", "Push commits to S3", {}, pushRepo)
-  .command("pull", "Pull commits from S3", {}, pullRepo)
-  .command("revert <commitID>", "Revert to a commit", (yargs) => {
-    yargs.positional("commitID", {
-      describe: "Commit ID",
-      type: "string",
-    });
-  }, (argv) => revertRepo(argv.commitID))
-  .demandCommand(1)
-  .help().argv;
-
-/* -------------------- SERVER -------------------- */
-
 function startServer() {
   const app = express();
   const PORT = process.env.PORT || 3002;
@@ -58,14 +6,17 @@ function startServer() {
   app.use(bodyParser.json());
   app.use(express.json());
 
-  // ✅ CORS FIX (works for Amplify + Render)
-  app.use(cors());
-
-  // ✅ Preflight (OPTIONS) fix - without using * or /* routes
+  // ✅ FORCE CORS HEADERS (WILL ALWAYS WORK)
   app.use((req, res, next) => {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+
+    // ✅ Preflight request
     if (req.method === "OPTIONS") {
       return res.sendStatus(200);
     }
+
     next();
   });
 
