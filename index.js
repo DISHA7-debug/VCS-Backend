@@ -25,41 +25,26 @@ dotenv.config();
 yargs(hideBin(process.argv))
   .command("start", "Starts the server", {}, startServer)
   .command("init", "Initialise a new repository", {}, initRepo)
-  .command(
-    "add <file>",
-    "Add a file to the repository",
-    (yargs) => {
-      yargs.positional("file", {
-        describe: "File to add",
-        type: "string",
-      });
-    },
-    (argv) => addRepo(argv.file)
-  )
-  .command(
-    "commit <message>",
-    "Commit staged files",
-    (yargs) => {
-      yargs.positional("message", {
-        describe: "Commit message",
-        type: "string",
-      });
-    },
-    (argv) => commitRepo(argv.message)
-  )
+  .command("add <file>", "Add a file to the repository", (yargs) => {
+    yargs.positional("file", {
+      describe: "File to add",
+      type: "string",
+    });
+  }, (argv) => addRepo(argv.file))
+  .command("commit <message>", "Commit staged files", (yargs) => {
+    yargs.positional("message", {
+      describe: "Commit message",
+      type: "string",
+    });
+  }, (argv) => commitRepo(argv.message))
   .command("push", "Push commits to S3", {}, pushRepo)
   .command("pull", "Pull commits from S3", {}, pullRepo)
-  .command(
-    "revert <commitID>",
-    "Revert to a commit",
-    (yargs) => {
-      yargs.positional("commitID", {
-        describe: "Commit ID",
-        type: "string",
-      });
-    },
-    (argv) => revertRepo(argv.commitID)
-  )
+  .command("revert <commitID>", "Revert to a commit", (yargs) => {
+    yargs.positional("commitID", {
+      describe: "Commit ID",
+      type: "string",
+    });
+  }, (argv) => revertRepo(argv.commitID))
   .demandCommand(1)
   .help().argv;
 
@@ -67,24 +52,43 @@ yargs(hideBin(process.argv))
 
 function startServer() {
   const app = express();
+
+  // ✅ Render / Cloud use their own PORT
   const PORT = process.env.PORT || 3002;
 
-  // Middleware
+  // ✅ Allowed Frontend URLs (Amplify + Local)
+  const allowedOrigins = [
+    "https://main.d1ca4l9j49evry.amplifyapp.com",
+    "http://localhost:5173",
+    "http://localhost:3000",
+  ];
+
+  // ✅ Middleware
   app.use(bodyParser.json());
   app.use(express.json());
 
+  // ✅ Proper CORS setup
   app.use(
     cors({
-      origin: "*",
+      origin: function (origin, callback) {
+        // allow requests with no origin (like Postman)
+        if (!origin) return callback(null, true);
+
+        if (allowedOrigins.includes(origin)) {
+          return callback(null, true);
+        } else {
+          return callback(new Error("Not allowed by CORS"));
+        }
+      },
       methods: ["GET", "POST", "PUT", "DELETE"],
       credentials: true,
     })
   );
 
-  // Routes
+  // ✅ Routes
   app.use("/", mainRouter);
 
-  // MongoDB
+  // ✅ MongoDB
   mongoose
     .connect(process.env.MONGODB_URI)
     .then(() => console.log("MongoDB connected!"))
@@ -97,12 +101,14 @@ function startServer() {
     console.log("CRUD operations called");
   });
 
-  // Socket.io
+  // ✅ Socket.io
   const httpServer = http.createServer(app);
+
   const io = new Server(httpServer, {
     cors: {
-      origin: "*",
+      origin: allowedOrigins,
       methods: ["GET", "POST"],
+      credentials: true,
     },
   });
 
