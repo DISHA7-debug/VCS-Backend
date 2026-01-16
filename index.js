@@ -52,8 +52,6 @@ yargs(hideBin(process.argv))
 
 function startServer() {
   const app = express();
-
-  // ✅ Render gives its own PORT automatically
   const PORT = process.env.PORT || 3002;
 
   // ✅ Allowed Frontend Origins (Amplify + Local)
@@ -67,7 +65,7 @@ function startServer() {
   app.use(bodyParser.json());
   app.use(express.json());
 
-  // ✅ FIXED CORS (works with Amplify + preflight)
+  // ✅ FIXED CORS
   app.use(
     cors({
       origin: function (origin, callback) {
@@ -86,8 +84,8 @@ function startServer() {
     })
   );
 
-  // ✅ Preflight requests (OPTIONS)
-  app.options("*", cors());
+  // ✅ Preflight requests (Express v5 safe)
+  app.options("/*", cors());
 
   // ✅ Routes
   app.use("/", mainRouter);
