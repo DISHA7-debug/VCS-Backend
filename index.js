@@ -53,10 +53,10 @@ yargs(hideBin(process.argv))
 function startServer() {
   const app = express();
 
-  // ✅ Render / Cloud use their own PORT
+  // ✅ Render gives its own PORT automatically
   const PORT = process.env.PORT || 3002;
 
-  // ✅ Allowed Frontend URLs (Amplify + Local)
+  // ✅ Allowed Frontend Origins (Amplify + Local)
   const allowedOrigins = [
     "https://main.d1ca4l9j49evry.amplifyapp.com",
     "http://localhost:5173",
@@ -67,11 +67,11 @@ function startServer() {
   app.use(bodyParser.json());
   app.use(express.json());
 
-  // ✅ Proper CORS setup
+  // ✅ FIXED CORS (works with Amplify + preflight)
   app.use(
     cors({
       origin: function (origin, callback) {
-        // allow requests with no origin (like Postman)
+        // allow requests with no origin (Postman / curl)
         if (!origin) return callback(null, true);
 
         if (allowedOrigins.includes(origin)) {
@@ -80,10 +80,14 @@ function startServer() {
           return callback(new Error("Not allowed by CORS"));
         }
       },
-      methods: ["GET", "POST", "PUT", "DELETE"],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
       credentials: true,
     })
   );
+
+  // ✅ Preflight requests (OPTIONS)
+  app.options("*", cors());
 
   // ✅ Routes
   app.use("/", mainRouter);
@@ -107,7 +111,7 @@ function startServer() {
   const io = new Server(httpServer, {
     cors: {
       origin: allowedOrigins,
-      methods: ["GET", "POST"],
+      methods: ["GET", "POST", "OPTIONS"],
       credentials: true,
     },
   });
